@@ -2,91 +2,91 @@
   "categories": [
     {
       "id": 0,
-      "name": "B1 0"
+      "name": "beef1_raw"
     },
     {
       "id": 1,
-      "name": "B1 1"
+      "name": "beef1_cooked"
     },
     {
       "id": 2,
-      "name": "B1 3"
+      "name": "beef1_mediumrare"
     },
     {
       "id": 3,
-      "name": "B1 5"
+      "name": "beef1_medium"
     },
     {
       "id": 4,
-      "name": "B2 0"
+      "name": "beef2_raw"
     },
     {
       "id": 5,
-      "name": "B2 1"
+      "name": "beef2_cooked"
     },
     {
       "id": 6,
-      "name": "B2 3"
+      "name": "beef2_mediumrare"
     },
     {
       "id": 7,
-      "name": "B2 5"
+      "name": "beef2_medium"
     },
     {
       "id": 8,
-      "name": "C1 0"
+      "name": "chicken_raw"
     },
     {
       "id": 9,
-      "name": "C1 1"
+      "name": "chicken_cooked"
     },
     {
       "id": 10,
-      "name": "MA 1 1"
+      "name": "marshmallow_cooked"
     },
     {
       "id": 11,
-      "name": "MA1 0"
+      "name": "marshmallow_raw"
     },
     {
       "id": 12,
-      "name": "MU 1 1"
+      "name": "mushroom_cooked"
     },
     {
       "id": 13,
-      "name": "MU1 0"
+      "name": "mushroom_raw"
     },
     {
       "id": 14,
-      "name": "P1 0"
+      "name": "pig_raw"
     },
     {
       "id": 15,
-      "name": "P1 1"
+      "name": "pig_cooked"
     },
     {
       "id": 16,
-      "name": "S1 0"
+      "name": "shrimp_raw"
     },
     {
       "id": 17,
-      "name": "S1 1"
+      "name": "shrimp_cooked"
     },
     {
       "id": 18,
-      "name": "T1 0"
+      "name": "tianbula_raw"
     },
     {
       "id": 19,
-      "name": "T1 1"
+      "name": "tianbula_cooked"
     },
     {
       "id": 20,
-      "name": "Z1 0"
+      "name": "zucchini_raw"
     },
     {
       "id": 21,
-      "name": "Z1 1"
+      "name": "zucchini_cooked"
     }
   ],
   "info": {

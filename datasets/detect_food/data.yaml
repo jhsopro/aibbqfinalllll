@@ -1,0 +1,30 @@
+path: datasets/detect_food
+
+train: images/train
+val: images/val
+test: images/test
+
+names:
+  0: beef1_raw
+  1: beef1_cooked
+  2: beef1_mediumrare
+  3: beef1_medium
+  4: beef2_raw
+  5: beef2_cooked
+  6: beef2_mediumrare
+  7: beef2_medium
+  8: chicken_raw
+  9: chicken_cooked
+  10: marshmallow_cooked
+  11: marshmallow_raw
+  12: mushroom_cooked
+  13: mushroom_raw
+  14: pig_raw
+  15: pig_cooked
+  16: shrimp_raw
+  17: shrimp_cooked
+  18: tianbula_raw
+  19: tianbula_cooked
+  20: zucchini_raw
+  21: zucchini_cooked
+
