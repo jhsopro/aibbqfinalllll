@@ -1,109 +1,145 @@
-# temp_sensor.py  (Mac + Arduino USB serial)
+# temp_sensor.py
+# Mac: read temperature from Arduino via Serial (recommended)
+# Jetson later: you can replace this with SPI MAX6675 directly if you want.
+
 import time
-import serial
-import serial.tools.list_ports
+import random
 
-
-def _find_arduino_port():
-    """Auto-find an Arduino-like serial port on macOS."""
-    ports = list(serial.tools.list_ports.comports())
-
-    # Prefer /dev/cu.usbmodem* or /dev/cu.usbserial*
-    for p in ports:
-        if "usbmodem" in p.device or "usbserial" in p.device:
-            return p.device
-
-    # Fallback: any /dev/cu.*
-    for p in ports:
-        if p.device.startswith("/dev/cu."):
-            return p.device
-
-    return None
-
-
-class MAX6675:
+class DemoTempController:
     """
-    Compatibility wrapper.
-
-    main_bbq.py currently does:
-        temp_sensor = MAX6675(bus=0, device=0)
-
-    On macOS we DON'T have SPI, so we ignore bus/device and read temperature
-    from Arduino over USB serial instead.
-
-    Arduino should print lines like:
-        TEMP_C:182.75
-    (or just a number, we handle both)
+    Fake temperature generator for demos.
+    - ramps in mostly ~2°C jumps (with 1/3°C variation)
+    - jitters near target
+    - supports changing target via set_target()
     """
+    def __init__(self, start=25.0, noise_std=0.8):
+        self.current = float(start)
+        self.target = float(start)
+        self.noise_std = float(noise_std)
+        self.last_t = time.monotonic()
 
-    def __init__(self, bus=0, device=0, port=None, baud=115200, timeout=1):
-        _ = bus, device  # ignored on Mac
+    def set_target(self, target):
+        self.target = float(target)
+
+    def update(self):
+        now = time.monotonic()
+        dt = max(0.001, now - self.last_t)
+        self.last_t = now
+
+        err = self.target - self.current
+
+        # step-based climb: mostly +2°C, sometimes +1 or +3 (more natural)
+        if abs(err) > 6:
+            base_step = 2.0
+            step = base_step + random.choice([-1.0, 0.0, 0.0, 0.0, +1.0])  # mostly 2
+            step = max(1.0, min(3.0, step))
+            step = step if err > 0 else -step
+        else:
+            # near target: slow down and hover
+            step = err * 0.25
+
+        self.current += step
+
+        # jitter stronger near target
+        near = max(0.0, 1.0 - min(1.0, abs(err) / 25.0))
+        self.current += random.gauss(0.0, self.noise_std) * (0.3 + 0.7 * near)
+
+        # clamp
+        self.current = max(0.0, min(999.0, self.current))
+
+        # choose ONE:
+        return float(int(round(self.current)))   # more "digital sensor"
+        # return round(self.current, 1)          # smoother (1 decimal)
+
+def get_mode(temp_c):
+    if temp_c is None:
+        return "B"
+    if temp_c < 500:
+        return "A"
+    if temp_c < 700:
+        return "B"
+    return "C"
+
+
+def demo_temperature(now):
+    """
+    Fake temperature curve for exhibition:
+    - ramps to 300
+    - then steps to 500
+    - then steps to 700
+    """
+    t = now % 30.0  # 30s loop
+
+    if t < 8:
+        return 25 + (300 - 25) * (t / 8)      # ramp up
+    elif t < 16:
+        return 300 + (500 - 300) * ((t - 8) / 8)
+    elif t < 24:
+        return 500 + (700 - 500) * ((t - 16) / 8)
+    else:
+        return 700
+
+class TempSensorSerial:
+    """
+    Reads temp from Arduino.
+    Expected Arduino output examples:
+      "TEMP: 187.25"
+      "187.25"
+    """
+    def __init__(self, port=None, baud=115200, timeout=0.2, print_connect=True):
+        import serial
+        import serial.tools.list_ports
+
+        self.serial = None
+        self.last_temp = None
+        self.last_read_time = 0.0
 
         if port is None:
-            port = _find_arduino_port()
+            ports = list(serial.tools.list_ports.comports())
+            # Prefer usbmodem / usbserial on mac
+            candidates = [p.device for p in ports if ("usbmodem" in p.device.lower() or "usbserial" in p.device.lower())]
+            if not candidates and ports:
+                candidates = [ports[0].device]
+            if not candidates:
+                raise RuntimeError("No serial ports found. Plug in Arduino and try again.")
+            port = candidates[0]
 
-        if port is None:
-            raise RuntimeError("找不到 Arduino serial port（/dev/cu.*）。請先插上 Arduino 再試。")
+        self.serial = serial.Serial(port, baudrate=baud, timeout=timeout)
+        # Give Arduino time to reset
+        time.sleep(2.5)
 
-        self.port = port
-        self.baud = baud
-        self.ser = serial.Serial(self.port, self.baud, timeout=timeout)
-        time.sleep(2)  # Arduino opens serial -> often resets
+        if print_connect:
+            print(f"✅ Arduino serial connected: {port} @ {baud}")
 
-        self.last_temp_c = None
-        print(f"✅ Arduino serial connected: {self.port} @ {self.baud}")
+    def read_temp_c(self, max_age_sec=5.0, debug=False):
 
-    def read_temp_c(self):
-        """
-        Try to read one valid temperature from serial.
-        Return: float or None (if no valid line)
-        """
-        # Read a few lines quickly to find a valid one
-        for _ in range(5):
-            raw = self.ser.readline()
-            if not raw:
-                continue
+        now = time.monotonic()
+        try:
+            line = self.serial.readline().decode(errors="ignore").strip()
+            if line:
+                if debug:
+                    print("SERIAL:", repr(line))
+                import re
+                m = re.search(r"(-?\d+(?:\.\d+)?)", line)
+                if m:
+                    self.last_temp = float(m.group(1))
+                    self.last_read_time = now
+        except Exception as e:
+            if debug:
+                print("SERIAL ERR:", e)
 
-            line = raw.decode("utf-8", errors="ignore").strip()
-            if not line:
-                continue
+        if self.last_temp is None:
+            return None
+        if (now - self.last_read_time) > max_age_sec:
+            return None
+        return self.last_temp
 
-            # Accept "TEMP_C:123.45" or just "123.45"
-            if "TEMP_C" in line:
-                parts = line.split(":")
-                if len(parts) >= 2:
-                    line = parts[-1].strip()
 
-            try:
-                temp = float(line)
-                self.last_temp_c = temp
-                return temp
-            except ValueError:
-                # ignore non-numeric lines
-                pass
 
-        return None
 
     def close(self):
         try:
-            self.ser.close()
+            if self.serial:
+                self.serial.close()
         except Exception:
             pass
-
-
-def get_mode(temp_c):
-    """
-    Your mode logic:
-      A: 170-190
-      B: 190-210
-      C: 210-230 (and above)
-    """
-    if temp_c is None:
-        return "B"  # fallback mode if no temp yet
-
-    if 170 <= temp_c < 190:
-        return "A"
-    elif 190 <= temp_c < 210:
-        return "B"
-    else:
-        return "C"

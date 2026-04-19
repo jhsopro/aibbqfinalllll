@@ -3,10 +3,10 @@ import cv2
 import numpy as np
 
 CENTER_POLY_FRAC = [
-    (0.2475, 0.32),
-    (0.652, 0.32),
-    (0.688, 0.70),
-    (0.21, 0.70),
+    (0.4, 0.4),
+    (0.57, 0.4),
+    (0.59, 0.60),
+    (0.38, 0.60),
 ]
 
 def poly_from_frac(w: int, h: int, frac_points):
