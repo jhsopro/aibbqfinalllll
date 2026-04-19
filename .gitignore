@@ -1,0 +1,11 @@
+venv/
+datasets/
+meat_project/
+runs/
+__pycache__/
+*.pt
+*.pth
+*.onnx
+*.pyc
+.DS_Store
+.env
